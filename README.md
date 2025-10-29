@@ -8,9 +8,6 @@ Issuer - Ben
 Python web server on Pi
 
 
-Receiver - Keshav
-IOS UI (swift app / apple wallet)
-
 
 Validator - Joint
 Pi + Nfc hat
