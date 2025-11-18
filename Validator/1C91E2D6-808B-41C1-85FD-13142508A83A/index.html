@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Login</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    input {
+      display: block;
+      margin: 10px 0;
+      padding: 5px;
+    }
+    button {
+      padding: 5px 20px;
+    }
+  </style>
+</head>
+<body>
+  <div>
+    <h2>Login</h2>
+    <input type="text" id="username" placeholder="Username" />
+    <input type="password" id="password" placeholder="Password" />
+    <button onclick="checkLogin()">Log In</button>
+    <div id="message"></div>
+  </div>
+
+  <script>
+    let credentials = [];
+    let firstFailedAttemptTime = null;
+    let timeoutId = null;
+    let loginSucceeded = false;
+    const BACKEND_URL = 'http://localhost:8001';
+
+    // Load credentials from file when page loads
+    async function loadCredentials() {
+      try {
+        const response = await fetch('credentials.json');
+        if (!response.ok) {
+          throw new Error('Failed to load credentials file');
+        }
+        credentials = await response.json();
+      } catch (error) {
+        console.error('Error loading credentials:', error);
+        document.getElementById("message").textContent = "Error: Could not load credentials file";
+        document.getElementById("message").style.color = "red";
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', loadCredentials);
+
+    // Function to call backend on successful login
+    async function callLoginSuccess() {
+      try {
+        const response = await fetch(`${BACKEND_URL}/login-success`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        if (!response.ok) {
+          console.error('Failed to call login-success endpoint');
+        }
+      } catch (error) {
+        console.error('Error calling login-success:', error);
+      }
+    }
+
+    // Function to call backend on timeout
+    async function callLoginTimeout() {
+      try {
+        const response = await fetch(`${BACKEND_URL}/login-timeout`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        if (!response.ok) {
+          console.error('Failed to call login-timeout endpoint');
+        }
+      } catch (error) {
+        console.error('Error calling login-timeout:', error);
+      }
+    }
+
+    // Start the 15-second timeout from first failed login attempt
+    function startTimeout() {
+      if (firstFailedAttemptTime === null) {
+        firstFailedAttemptTime = Date.now();
+        
+        // Set timeout for 15 seconds
+        timeoutId = setTimeout(() => {
+          if (!loginSucceeded) {
+            callLoginTimeout();
+          }
+        }, 15000);
+      }
+    }
+
+    async function checkLogin() {
+      const user = document.getElementById("username").value;
+      const pass = document.getElementById("password").value;
+      const message = document.getElementById("message");
+
+      if (credentials.length === 0) {
+        await loadCredentials();
+      }
+
+      const isValid = credentials.some(cred => 
+        cred.username === user && cred.password === pass
+      );
+
+      if (isValid) {
+        loginSucceeded = true;
+        // Clear the timeout since login succeeded
+        if (timeoutId !== null) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        message.textContent = "Login successful!";
+        message.style.color = "green";
+        // Call backend on successful login (mover.sh will be called instantly)
+        callLoginSuccess();
+      } else {
+        // Start timeout on first failed login attempt
+        startTimeout();
+        message.textContent = "Login failed!";
+        message.style.color = "red";
+      }
+    }
+  </script>
+</body>
+</html>
