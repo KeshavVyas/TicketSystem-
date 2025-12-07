@@ -21,7 +21,7 @@ class LoginHandler(BaseHTTPRequestHandler):
             <p>Available endpoints:</p>
             <ul>
                 <li>POST /login-success - Called on successful login</li>
-                <li>POST /login-timeout - Called on 15-second timeout</li>
+                <li>POST /login-timeout - Called on 10-second timeout</li>
             </ul>
         </body>
         </html>
@@ -130,7 +130,7 @@ if __name__ == '__main__':
     print(f"Directory: {script_dir}")
     print("Endpoints:")
     print("  POST /login-success - Called on successful login")
-    print("  POST /login-timeout - Called on 15-second timeout")
+    print("  POST /login-timeout - Called on 10-second timeout")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

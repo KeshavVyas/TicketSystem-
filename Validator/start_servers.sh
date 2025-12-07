@@ -4,6 +4,17 @@
 VALIDATOR_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$VALIDATOR_DIR"
 
+# Run idle.py to turn on GPIO 17
+IDLE_PATH=$(find . -name "idle.py" -type f | sort | tail -1)
+if [ -n "$IDLE_PATH" ]; then
+    IDLE_DIR="$(cd "$VALIDATOR_DIR/$(dirname "$IDLE_PATH")" && pwd)"
+    echo "Running idle.py to turn on GPIO 17..."
+    cd "$IDLE_DIR"
+    python3 idle.py &
+    IDLE_PID=$!
+    sleep 0.5  # Give it time to set GPIO
+    cd "$VALIDATOR_DIR"
+fi
 
 SERVER_PATH=$(find . -name "server.py" -type f | sort | tail -1)
 

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <title>Login</title>
   <style>
@@ -10,16 +11,19 @@
       height: 100vh;
       margin: 0;
     }
+
     input {
       display: block;
       margin: 10px 0;
       padding: 5px;
     }
+
     button {
       padding: 5px 20px;
     }
   </style>
 </head>
+
 <body>
   <div>
     <h2>Login</h2>
@@ -87,17 +91,17 @@
       }
     }
 
-    // Start the 15-second timeout from first failed login attempt
+    // Start the 10-second timeout from first failed login attempt
     function startTimeout() {
       if (firstFailedAttemptTime === null) {
         firstFailedAttemptTime = Date.now();
-        
-        // Set timeout for 15 seconds
+
+        // Set timeout for 10 seconds
         timeoutId = setTimeout(() => {
           if (!loginSucceeded) {
             callLoginTimeout();
           }
-        }, 15000);
+        }, 10000);
       }
     }
 
@@ -110,7 +114,7 @@
         await loadCredentials();
       }
 
-      const isValid = credentials.some(cred => 
+      const isValid = credentials.some(cred =>
         cred.username === user && cred.password === pass
       );
 
@@ -134,4 +138,5 @@
     }
   </script>
 </body>
+
 </html>
