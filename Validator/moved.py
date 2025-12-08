@@ -58,3 +58,4 @@ print("GPIO 22 turned OFF")
 if gpio_21:
     gpio_21.close()
 gpio_22.close()
+exit(0)

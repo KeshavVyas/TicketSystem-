@@ -38,7 +38,7 @@
     let firstFailedAttemptTime = null;
     let timeoutId = null;
     let loginSucceeded = false;
-    const BACKEND_URL = 'http://localhost:8001';
+    const BACKEND_URL = 'http://172.16.24.16:8001';
 
     // Load credentials from file when page loads
     async function loadCredentials() {
@@ -60,31 +60,49 @@
     // Function to call backend on successful login
     async function callLoginSuccess() {
       try {
+        console.log(`Calling ${BACKEND_URL}/login-success`);
         const response = await fetch(`${BACKEND_URL}/login-success`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
-          }
+          },
+          mode: 'cors'
         });
+        console.log(`Response status: ${response.status}`);
         if (!response.ok) {
-          console.error('Failed to call login-success endpoint');
+          console.error(`Failed to call login-success endpoint: ${response.status} ${response.statusText}`);
+          const text = await response.text();
+          console.error('Response:', text);
+        } else {
+          const data = await response.json();
+          console.log('Login success response:', data);
         }
       } catch (error) {
         console.error('Error calling login-success:', error);
+        document.getElementById("message").textContent = `Error: ${error.message}`;
+        document.getElementById("message").style.color = "red";
       }
     }
 
     // Function to call backend on timeout
     async function callLoginTimeout() {
       try {
+        console.log(`Calling ${BACKEND_URL}/login-timeout`);
         const response = await fetch(`${BACKEND_URL}/login-timeout`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
-          }
+          },
+          mode: 'cors'
         });
+        console.log(`Response status: ${response.status}`);
         if (!response.ok) {
-          console.error('Failed to call login-timeout endpoint');
+          console.error(`Failed to call login-timeout endpoint: ${response.status} ${response.statusText}`);
+          const text = await response.text();
+          console.error('Response:', text);
+        } else {
+          const data = await response.json();
+          console.log('Login timeout response:', data);
         }
       } catch (error) {
         console.error('Error calling login-timeout:', error);

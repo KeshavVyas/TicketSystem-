@@ -1,56 +1,42 @@
 #!/usr/bin/env python3
 
 import time
-import subprocess
-import sys
 import os
 import signal
+import subprocess
 import board
-import digitalio
 import adafruit_dht
+from gpiozero import OutputDevice
 
-# Kill any existing read_temp.py processes (except this one)
-def kill_existing_processes():
-    """Kill any other instances of read_temp.py"""
+# Kill any processes that might be using GPIO 24
+def kill_gpio24_processes():
     current_pid = os.getpid()
     try:
-        result = subprocess.run(
-            ['pgrep', '-f', 'read_temp.py'],
-            capture_output=True,
-            text=True
-        )
+        # Kill any read_temp.py processes
+        result = subprocess.run(['pgrep', '-f', 'read_temp.py'], capture_output=True, text=True)
         if result.returncode == 0:
             pids = result.stdout.strip().split('\n')
             for pid_str in pids:
                 try:
                     pid = int(pid_str.strip())
                     if pid != current_pid:
-                        print(f"Killing existing read_temp.py process (PID: {pid})...")
                         os.kill(pid, signal.SIGTERM)
-                        time.sleep(0.5)  # Give it time to clean up
+                        time.sleep(0.3)
                 except (ValueError, ProcessLookupError):
                     pass
-    except Exception as e:
-        print(f"Warning: Could not check for existing processes: {e}")
+    except Exception:
+        pass
 
-# Clean up any existing processes first
-kill_existing_processes()
-time.sleep(0.5)  # Wait a bit for GPIO to be released
+kill_gpio24_processes()
+time.sleep(1.0)  # Wait 1 second before reading
 
-# Setup GPIO 24 as output for power control
-try:
-    gpio24 = digitalio.DigitalInOut(board.D24)
-    gpio24.direction = digitalio.Direction.OUTPUT
-    gpio24.value = True  # Turn on GPIO 24
-    print("GPIO 24 initialized and turned ON")
-except Exception as e:
-    print(f"Error initializing GPIO 24: {e}")
-    print("This usually means GPIO 24 is still in use by another process.")
-    print("Try running: pkill -f read_temp.py")
-    sys.exit(1)
+# Setup GPIO 4 for blinking indicator
+gpio4 = OutputDevice(4, initial_value=False)
 
-# Setup DHT sensor on GPIO 23
-dht = adafruit_dht.DHT22(board.D23)
+# Setup DHT sensor on GPIO 24
+dht = adafruit_dht.DHT22(board.D24)
+
+print("Starting temperature and humidity monitoring...")
 
 try:
     while True:
@@ -58,30 +44,65 @@ try:
             temp_c = dht.temperature
             humidity = dht.humidity
             
-            # Only process if we got valid readings
             if temp_c is not None and humidity is not None:
                 temp_f = temp_c * 9/5 + 32
                 print(f"Temperature: {temp_f}°F, Humidity: {humidity}%")
                 
-                # Check if humidity exceeds 95%
+                # Check if humidity exceeds threshold
                 if humidity > 50:
-                    print(f"Humidity {humidity}% exceeds 95% - shutting down GPIOs and starting servers...")
-                    # Turn off GPIO 24
-                    gpio24.value = False
-                    # Close sensor on GPIO 23
-                    dht.exit()
-                    # Call start_servers.sh
+                    print(f"Humidity {humidity}% exceeds threshold - starting servers...")
+                    
+                    # Turn off GPIO 4 and wait 1 second
+                    gpio4.off()
+                    time.sleep(1.0)
+                    
+                    # Close DHT sensor before starting servers
+                    try:
+                        dht.exit()
+                    except:
+                        pass
+                    
+                    # Start servers
                     subprocess.run(["/home/pi/Desktop/TicketSystem-/Validator/start_servers.sh"])
-                    break
+                    
+                    # Re-initialize DHT sensor to resume monitoring
+                    time.sleep(1.0)
+                    dht = adafruit_dht.DHT22(board.D24)
+                    print("Resumed temperature and humidity monitoring...")
+                else:
+                    # Blink GPIO 4 at 0.5 second intervals when humidity is below 50%
+                    gpio4.on()
+                    time.sleep(0.5)
+                    gpio4.off()
+                    time.sleep(0.5)
+            else:
+                print("Failed to read sensor data")
+                # Still blink GPIO 4 even if sensor read fails
+                gpio4.on()
+                time.sleep(0.5)
+                gpio4.off()
+                time.sleep(0.5)
+                
         except RuntimeError:
-            pass
-        time.sleep(1)
+            # DHT sensors sometimes fail to read, this is normal
+            # Still blink GPIO 4
+            gpio4.on()
+            time.sleep(0.5)
+            gpio4.off()
+            time.sleep(0.5)
+        except Exception as e:
+            print(f"Error: {e}")
+            gpio4.on()
+            time.sleep(0.5)
+            gpio4.off()
+            time.sleep(0.5)
+        
 except KeyboardInterrupt:
     pass
 finally:
     try:
-        gpio24.value = False
-        gpio24.deinit()  # Properly release the GPIO
+        gpio4.off()
+        gpio4.close()
     except:
         pass
     try:

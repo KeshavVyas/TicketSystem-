@@ -41,7 +41,6 @@ def main():
 
     # --- Continuous read ---
     if args.continuous:
-        
         try:
             while True:
                 line = ser.readline()
@@ -51,6 +50,8 @@ def main():
             print("\nExiting...")
         finally:
             ser.close()
+    else:
+        ser.close()
 
 if __name__ == "__main__":
     main()
