@@ -20,7 +20,7 @@ while true; do
     echo "----------------------------------------"
     
     # Run core-loop.py (monitors temperature/humidity)
-    # Exits when humidity > 50%
+    # Exits when humidity > threshold (default 75%)
     python3 "$CORE_LOOP_SCRIPT"
     CORE_LOOP_EXIT_CODE=$?
     

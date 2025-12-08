@@ -27,6 +27,7 @@ YELLOW_GPIO = int(env.get('YELLOW_GPIO', '27'))
 GREEN_GPIO = int(env.get('GREEN_GPIO', '4'))
 RED_GPIO = int(env.get('RED_GPIO', '22'))
 READINGS_TO_SKIP = int(env.get('READINGS_TO_SKIP', '5'))
+HUMIDITY_THRESHOLD = float(env.get('HUMIDITY_THRESHOLD', '75'))
 
 # Turn off all GPIO pins at startup to release any busy pins
 print("Turning off all GPIO pins at startup...")
@@ -120,7 +121,7 @@ while True:
         print(f"Temperature: {temp_f}°F, Humidity: {humidity}%")
         
         # Check if humidity exceeds threshold
-        if humidity > 50:
+        if humidity > HUMIDITY_THRESHOLD:
             print("high humidity")
             
             # Stop taking readings - turn off yellow LED
@@ -164,7 +165,7 @@ while True:
             # Stop login server if running
            
             
-            # Blink yellow LED at 0.5 second intervals when humidity is below 50%
+            # Blink yellow LED at 0.5 second intervals when humidity is below threshold
             yellow_led.on()
             time.sleep(0.5)
             yellow_led.off()

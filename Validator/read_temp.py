@@ -7,6 +7,22 @@ import subprocess
 import board
 import adafruit_dht
 from gpiozero import OutputDevice
+from pathlib import Path
+
+# Load .env file
+env = {}
+env_file = Path(__file__).parent / '.env'
+if not env_file.exists():
+    env_file = Path(__file__).parent.parent / '.env'
+
+if env_file.exists():
+    with open(env_file) as f:
+        for line in f:
+            if '=' in line and not line.strip().startswith('#'):
+                key, value = line.strip().split('=', 1)
+                env[key] = value
+
+HUMIDITY_THRESHOLD = float(env.get('HUMIDITY_THRESHOLD', '75'))
 
 # Kill any processes that might be using GPIO 24
 def kill_gpio24_processes():
@@ -49,7 +65,7 @@ try:
                 print(f"Temperature: {temp_f}°F, Humidity: {humidity}%")
                 
                 # Check if humidity exceeds threshold
-                if humidity > 50:
+                if humidity > HUMIDITY_THRESHOLD:
                     print(f"Humidity {humidity}% exceeds threshold - starting servers...")
                     
                     # Turn off GPIO 4 and wait 1 second
@@ -70,7 +86,7 @@ try:
                     dht = adafruit_dht.DHT22(board.D24)
                     print("Resumed temperature and humidity monitoring...")
                 else:
-                    # Blink GPIO 4 at 0.5 second intervals when humidity is below 50%
+                    # Blink GPIO 4 at 0.5 second intervals when humidity is below threshold
                     gpio4.on()
                     time.sleep(0.5)
                     gpio4.off()

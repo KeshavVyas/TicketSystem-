@@ -332,11 +332,17 @@ def login():
     if request.method == 'POST':
         if request.form.get('username') == USERNAME and request.form.get('password') == PASSWORD:
             # Successful login - reset failed attempts
+            print("successful login!")
             session['failed_attempts'] = 0
             session['logged_in'] = True
             session['username'] = USERNAME
             session.permanent = False  # Don't persist session
-            # Turn on green LED on successful login
+            # Turn off yellow LED first, then turn on green LED on successful login
+            if yellow_led:
+                try:
+                    yellow_led.off()
+                except Exception as e:
+                    print(f"Error turning off yellow LED: {e}")
             if green_led:
                 try:
                     green_led.on()
