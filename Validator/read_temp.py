@@ -34,7 +34,7 @@ time.sleep(1.0)  # Wait 1 second before reading
 gpio4 = OutputDevice(4, initial_value=False)
 
 # Setup DHT sensor on GPIO 24
-dht = adafruit_dht.DHT22(board.D24)
+dht = adafruit_dht.DHT22(board.D18)
 
 print("Starting temperature and humidity monitoring...")
 
