@@ -80,13 +80,22 @@ if [ ! -d "$VALIDATOR_DIR/$NEW_RANDOM_DIR" ]; then
 fi
 echo "Directory created successfully: $VALIDATOR_DIR/$NEW_RANDOM_DIR"
 
-# Get the Pi's IP address for replacing localhost in index.html
-PI_IP=$(hostname -I | awk '{print $1}')
-if [ -z "$PI_IP" ] || [ "$PI_IP" = "" ]; then
-    PI_IP=$(ip addr show | grep 'inet ' | grep -v '127.0.0.1' | awk '{print $2}' | cut -d/ -f1 | head -n1)
+# Get the Pi's IP address from .env file first
+PI_IP=""
+if [ -f "$VALIDATOR_DIR/.env" ]; then
+    PI_IP=$(grep "^PI_IP=" "$VALIDATOR_DIR/.env" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
 fi
+
+# Fallback: detect IP automatically if not in .env
 if [ -z "$PI_IP" ] || [ "$PI_IP" = "" ]; then
-    PI_IP="172.16.24.16"  # Default to known IP
+    PI_IP=$(hostname -I | awk '{print $1}')
+    if [ -z "$PI_IP" ] || [ "$PI_IP" = "" ]; then
+        PI_IP=$(ip addr show | grep 'inet ' | grep -v '127.0.0.1' | awk '{print $2}' | cut -d/ -f1 | head -n1)
+    fi
+    # Final fallback to localhost if IP can't be determined
+    if [ -z "$PI_IP" ] || [ "$PI_IP" = "" ]; then
+        PI_IP="localhost"
+    fi
 fi
 
 # Move only index.html and credentials.json to the new directory (login page files)

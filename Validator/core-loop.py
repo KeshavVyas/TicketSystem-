@@ -2,6 +2,7 @@
 
 import time
 import os
+import sys
 import signal
 import subprocess
 import board
@@ -25,6 +26,7 @@ if env_file.exists():
 YELLOW_GPIO = int(env.get('YELLOW_GPIO', '27'))
 GREEN_GPIO = int(env.get('GREEN_GPIO', '4'))
 RED_GPIO = int(env.get('RED_GPIO', '22'))
+READINGS_TO_SKIP = int(env.get('READINGS_TO_SKIP', '5'))
 
 # Turn off all GPIO pins at startup to release any busy pins
 print("Turning off all GPIO pins at startup...")
@@ -79,9 +81,10 @@ try:
 except:
     pass  # Ignore errors on initial read
 
-login_server_process = None
-
 print("Starting temperature and humidity monitoring...")
+
+# Skip first few readings (sensor stabilization)
+reading_count = 0
 
 while True:
     try:
@@ -104,6 +107,15 @@ while True:
         continue
     
     if temp_c is not None and humidity is not None:
+        # Skip first few readings for sensor stabilization
+        reading_count += 1
+        if reading_count <= READINGS_TO_SKIP:
+            print(f"Skipping reading {reading_count}/{READINGS_TO_SKIP} (sensor stabilization)...")
+            yellow_led.on()
+            time.sleep(0.5)
+            yellow_led.off()
+            time.sleep(0.5)
+            continue
         temp_f = temp_c * 9/5 + 32
         print(f"Temperature: {temp_f}°F, Humidity: {humidity}%")
         
@@ -145,28 +157,9 @@ while True:
             # Wait a bit more to ensure server is fully shut down and GPIO released
             time.sleep(1.0)
             
-            # Start login server only if not already started (do not restart if it exits)
-            if login_server_process is None:
-                login_server_path = Path(__file__).parent / 'login_server.py'
-                login_server_process = subprocess.Popen(['python3', str(login_server_path)])
-                
-                # Get IP for display
-                pi_ip = env.get('PI_IP', 'localhost')
-                if pi_ip == 'localhost':
-                    import socket
-                    try:
-                        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                        s.connect(("8.8.8.8", 80))
-                        pi_ip = s.getsockname()[0]
-                        s.close()
-                    except:
-                        pass
-                
-                print(f"Login server starting... (check server output for secret URL)")
-                print("Note: Server will NOT be restarted automatically after it exits.")
-            
-            # Stop monitoring loop - server is running (or has exited and won't be restarted)
-            break
+            # Exit - humidity threshold reached, let bash script handle starting login_server
+            print("Humidity threshold reached. Exiting temperature monitoring cycle.")
+            sys.exit(0)
         else:
             # Stop login server if running
            

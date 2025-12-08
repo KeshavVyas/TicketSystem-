@@ -5,6 +5,7 @@ import sys
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 import json
+from pathlib import Path
 
 class LoginHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -159,6 +160,19 @@ if __name__ == '__main__':
     script_dir = os.path.dirname(os.path.abspath(__file__))
     dir_name = os.path.basename(script_dir)
     
+    # Load .env file
+    env = {}
+    env_file = Path(script_dir) / '.env'
+    if not env_file.exists():
+        env_file = Path(script_dir).parent / '.env'
+    
+    if env_file.exists():
+        with open(env_file) as f:
+            for line in f:
+                if '=' in line and not line.strip().startswith('#'):
+                    key, value = line.strip().split('=', 1)
+                    env[key] = value
+    
     # Calculate path relative to Validator directory
     # Find 'Validator' in the path and get everything after it
     script_path = script_dir
@@ -218,15 +232,18 @@ if __name__ == '__main__':
     
     # Listen on all interfaces (0.0.0.0) so it's accessible from external devices
     server = HTTPServer(('0.0.0.0', port), LoginHandler)
-    # Get the Pi's IP address for display
-    import socket
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        pi_ip = s.getsockname()[0]
-        s.close()
-    except:
-        pi_ip = "172.16.24.16"  # Fallback to known IP
+    # Get the Pi's IP address for display - try .env file first
+    pi_ip = env.get('PI_IP', '').strip()
+    if not pi_ip:
+        # Fallback: detect IP automatically
+        import socket
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            pi_ip = s.getsockname()[0]
+            s.close()
+        except:
+            pi_ip = "localhost"  # Final fallback
     
     print(f"Server running on http://{pi_ip}:{port}/{dir_name}")
     print(f"Website running at: http://{pi_ip}:8000/{website_path}/index.html")

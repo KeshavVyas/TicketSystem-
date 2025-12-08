@@ -8,15 +8,26 @@ if [ -z "$DIRECTORY_UUID" ]; then
     exit 1
 fi
 
-# Get the Pi's IP address
-PI_IP=$(hostname -I | awk '{print $1}')
-# Fallback if hostname -I doesn't work
-if [ -z "$PI_IP" ] || [ "$PI_IP" = "" ]; then
-    PI_IP=$(ip addr show | grep 'inet ' | grep -v '127.0.0.1' | awk '{print $2}' | cut -d/ -f1 | head -n1)
+# Get script directory to find .env file
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Get the Pi's IP address from .env file first
+PI_IP=""
+if [ -f "$SCRIPT_DIR/.env" ]; then
+    PI_IP=$(grep "^PI_IP=" "$SCRIPT_DIR/.env" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
 fi
-# Final fallback to localhost if IP can't be determined
+
+# Fallback: detect IP automatically if not in .env
 if [ -z "$PI_IP" ] || [ "$PI_IP" = "" ]; then
-    PI_IP="localhost"
+    PI_IP=$(hostname -I | awk '{print $1}')
+    # Fallback if hostname -I doesn't work
+    if [ -z "$PI_IP" ] || [ "$PI_IP" = "" ]; then
+        PI_IP=$(ip addr show | grep 'inet ' | grep -v '127.0.0.1' | awk '{print $2}' | cut -d/ -f1 | head -n1)
+    fi
+    # Final fallback to localhost if IP can't be determined
+    if [ -z "$PI_IP" ] || [ "$PI_IP" = "" ]; then
+        PI_IP="localhost"
+    fi
 fi
 
 # Construct message: IP:8000/{directory}/index.html

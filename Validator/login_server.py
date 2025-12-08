@@ -269,16 +269,10 @@ SECRET_PATH = get_secret_path()
 
 # Get IP address
 def get_ip():
-    # Try to get from .env file first
-    env_file = Path(__file__).parent / '.env'
-    if not env_file.exists():
-        env_file = Path(__file__).parent.parent / '.env'
-    
-    if env_file.exists():
-        with open(env_file) as f:
-            for line in f:
-                if 'PI_IP' in line and '=' in line:
-                    return line.split('=', 1)[1].strip()
+    # Try to get from .env file first (already loaded in env dict)
+    pi_ip = env.get('PI_IP')
+    if pi_ip:
+        return pi_ip.strip()
     
     # Fallback: detect IP automatically
     try:
