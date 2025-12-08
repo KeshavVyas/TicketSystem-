@@ -23,7 +23,7 @@ app.config['PERMANENT_SESSION_LIFETIME'] = 0
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
-USERNAME = "admin"
+USERNAME = "Admin"
 PASSWORD = "password"
 
 # Load .env file for GPIO configuration
@@ -70,33 +70,16 @@ def turn_off_led_after_delay(led, delay=3):
     time.sleep(delay)
     led.off()
 
-# Function to turn on red LED for 5 seconds before TTY write
-def led_before_write():
-    if red_led is None:
-        print("DEBUG: Red LED not available, skipping...")
-        return
-    
-    # Turn on red LED only
-    print("DEBUG: Turning on red LED before TTY write...")
+# Function to turn off yellow and green LEDs
+def turn_off_yellow_green():
+    print("DEBUG: Turning off yellow and green LEDs...")
     try:
-        red_led.on()
-        if green_led:
-            green_led.off()
         if yellow_led:
             yellow_led.off()
+        if green_led:
+            green_led.off()
     except Exception as e:
-        print(f"DEBUG: Error controlling LEDs: {e}")
-        return
-    
-    # Keep it on for 5 seconds
-    time.sleep(5.0)
-    
-    # Turn red LED off
-    print("DEBUG: Turning off red LED, starting TTY write...")
-    try:
-        red_led.off()
-    except Exception as e:
-        print(f"DEBUG: Error turning off red LED: {e}")
+        print(f"DEBUG: Error turning off LEDs: {e}")
 
 # Function to find TTY device (similar to send_serial.sh)
 def find_tty_device():
@@ -119,8 +102,8 @@ def send_to_tty(message):
     # Get script directory
     script_dir = Path(__file__).parent
     
-    # Turn on red LED for 5 seconds before write
-    led_before_write()
+    # Turn off yellow and green LEDs first
+    turn_off_yellow_green()
     
     # Call talk.py via subprocess (same as send_serial.sh does)
     try:
@@ -139,6 +122,19 @@ def send_to_tty(message):
                 print(result.stdout)
         else:
             print(f"Error from talk.py: {result.stderr}")
+        
+        # Turn on red LED after TTY write
+        print("DEBUG: Turning on red LED after TTY write...")
+        if red_led:
+            try:
+                red_led.on()
+                # Wait 2 seconds
+                time.sleep(2.0)
+                # Turn off red LED
+                print("DEBUG: Turning off red LED...")
+                red_led.off()
+            except Exception as e:
+                print(f"DEBUG: Error controlling red LED: {e}")
         
         # Clean up GPIO pins before shutdown
         print("Cleaning up GPIO pins...")
@@ -356,4 +352,13 @@ if __name__ == '__main__':
     print(f"Login server starting...")
     print(f"Secret login URL: {login_url}")
     print(f"{'='*50}\n")
+    
+    # Turn on yellow LED when server starts
+    if yellow_led:
+        try:
+            yellow_led.on()
+            print(f"✓ Yellow LED turned on (server running)")
+        except Exception as e:
+            print(f"✗ Error turning on yellow LED: {e}")
+    
     app.run(host='0.0.0.0', port=port)
