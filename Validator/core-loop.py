@@ -145,8 +145,8 @@ while True:
             # Wait a bit more to ensure server is fully shut down and GPIO released
             time.sleep(1.0)
             
-            # Start login server if not already running
-            if login_server_process is None or login_server_process.poll() is not None:
+            # Start login server only if not already started (do not restart if it exits)
+            if login_server_process is None:
                 login_server_path = Path(__file__).parent / 'login_server.py'
                 login_server_process = subprocess.Popen(['python3', str(login_server_path)])
                 
@@ -163,8 +163,9 @@ while True:
                         pass
                 
                 print(f"Login server starting... (check server output for secret URL)")
+                print("Note: Server will NOT be restarted automatically after it exits.")
             
-            # Stop monitoring loop - server is running
+            # Stop monitoring loop - server is running (or has exited and won't be restarted)
             break
         else:
             # Stop login server if running

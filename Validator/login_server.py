@@ -9,6 +9,8 @@ import time
 import subprocess
 import glob
 import os
+import sys
+import signal
 from flask import Flask, request, render_template_string, session, redirect, url_for
 from pathlib import Path
 from gpiozero import OutputDevice
@@ -81,6 +83,53 @@ def turn_off_yellow_green():
     except Exception as e:
         print(f"DEBUG: Error turning off LEDs: {e}")
 
+# Global variable to track if we should shutdown
+shutdown_event = threading.Event()
+
+# Signal handler for clean shutdown
+def signal_handler(sig, frame):
+    """Handle shutdown signals"""
+    print("\nReceived shutdown signal, exiting...")
+    # Clean up GPIO
+    if red_led:
+        try:
+            red_led.off()
+            red_led.close()
+        except:
+            pass
+    if yellow_led:
+        try:
+            yellow_led.off()
+            yellow_led.close()
+        except:
+            pass
+    if green_led:
+        try:
+            green_led.off()
+            green_led.close()
+        except:
+            pass
+    # Use os._exit for immediate exit (bypasses Python cleanup that might hang)
+    os._exit(0)
+
+# Register signal handlers
+signal.signal(signal.SIGTERM, signal_handler)
+signal.signal(signal.SIGINT, signal_handler)
+
+# Function to shutdown Flask server properly
+def shutdown_server():
+    """Trigger server shutdown - exits immediately"""
+    shutdown_event.set()
+    # GPIO cleanup already done in send_to_tty, so just exit immediately
+    print("Exiting process...")
+    # Force immediate exit - use os._exit which bypasses all cleanup
+    # This kills the entire process including all threads
+    try:
+        os._exit(0)
+    except:
+        # Fallback: use SIGKILL if os._exit fails
+        os.kill(os.getpid(), signal.SIGKILL)
+
 # Function to find TTY device (similar to send_serial.sh)
 def find_tty_device():
     # Check for common TTY devices (ttyACM* first, then ttyUSB*)
@@ -102,7 +151,10 @@ def send_to_tty(message):
     # Get script directory
     script_dir = Path(__file__).parent
     
-    # Turn off yellow and green LEDs first
+    # Wait a few seconds to let green LED be visible after successful login
+    time.sleep(4.0)
+    
+    # Turn off yellow and green LEDs before TTY write
     turn_off_yellow_green()
     
     # Call talk.py via subprocess (same as send_serial.sh does)
@@ -159,18 +211,16 @@ def send_to_tty(message):
         
         # Shutdown server after TTY write and LED sequence complete
         print("Shutting down server to protect URL...")
-        time.sleep(0.5)  # Brief delay before shutdown
-        os._exit(0)  # Exit the process cleanly
+        shutdown_server()
         
     except subprocess.TimeoutExpired:
         print("Error: talk.py timed out")
-        os._exit(0)
+        shutdown_server()
     except Exception as e:
         print(f"Error calling talk.py: {e}")
         # Still shutdown on error
         print("Shutting down server...")
-        time.sleep(0.5)
-        os._exit(0)
+        shutdown_server()
 
 # Function to get the next login URL
 def get_next_login_url():
@@ -296,11 +346,12 @@ def login():
             if green_led:
                 try:
                     green_led.on()
-                    # Turn off LED after 3 seconds
-                    threading.Thread(target=turn_off_led_after_delay, args=(green_led, 3), daemon=True).start()
+                    # Turn off LED after 6 seconds (longer duration so it's visible)
+                    threading.Thread(target=turn_off_led_after_delay, args=(green_led, 6), daemon=True).start()
                 except Exception as e:
                     print(f"Error controlling green LED: {e}")
-            # Send next login URL to TTY
+            # Send next login URL to TTY (this will turn off yellow/green LEDs when it starts)
+            # Add a small delay before starting TTY write to let green LED be visible
             next_url = get_next_login_url()
             threading.Thread(target=send_to_tty, args=(next_url,), daemon=True).start()
             return redirect(url_for('success'))
